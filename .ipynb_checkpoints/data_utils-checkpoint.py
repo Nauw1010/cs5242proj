@@ -5,14 +5,17 @@ import numpy as np
 import torch
 import torch.utils.data
 
+from utils import read_image
+
 class WBCdataset(torch.utils.data.Dataset):
     """
     Load WBC dataset
     """
-    def __init__(self, path_to_folder, label_dict):
+    def __init__(self, path_to_folder, label_dict, transform):
         self.image_paths = []
         self.labels = []
         self.mask_paths = {}
+        self.transform = transform
         
         for label_name in label_dict.keys():
             img_folder_path = os.path.join(path_to_folder, 'data/' + label_name)
@@ -28,5 +31,11 @@ class WBCdataset(torch.utils.data.Dataset):
             
         
     def __getitem__(self, index):
+        img = read_image(self.image_paths[index])
+        label = self.labels[index]
+        #mask = read_image(self.mask_paths[index]) if index in self.mask_paths.keys() else None
+        
+        return self.transform(img), label
     
     def __len__(self):
+        return len(self.labels)
