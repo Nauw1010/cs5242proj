@@ -21,7 +21,7 @@ class FeedForward(nn.Module):
 
 class Attention(nn.Module):
     def __init__(self, dim, heads = 8, dim_head = 64, dropout = 0.):
-        super.__init__()
+        super().__init__()
         inner_dim = heads * dim_head
         project_out = not (heads == 1 and dim_head == dim) # if True, need another projection layer
         
@@ -34,7 +34,7 @@ class Attention(nn.Module):
         
         self.to_qkv = nn.Linear(dim, inner_dim*3, bias = False) # (b, n, dim) -> (b, n, heads * dim_head * 3)
         self.project_out = nn.Sequential(
-            nn.Linear(inner_dim, dim)
+            nn.Linear(inner_dim, dim),
             nn.Dropout(dropout)
         ) if project_out else nn.Identity()
         
@@ -42,7 +42,7 @@ class Attention(nn.Module):
     def forward(self, x):
         x = self.layernorm(x)
         qkv = self.to_qkv(x).chunk(3, dim = -1) # (b, n, heads * dim_head * 3) -> 3 * [(b, n, heads * dim_head)]
-        q, k, v = map(lambda t: rearrage(t, 'b n (h d) -> b h n d', h = self.heads), qkv) # (b, n, heads * dim_head) -> (b, heads, n, dim_head)
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv) # (b, n, heads * dim_head) -> (b, heads, n, dim_head)
         
         dots = (q @ k.transpose(-2, -1)) * self.scale # (b, heads, n, dim_head) @ (b, heads, dim_head, n) = (b, heads, n, n)
         attn = self.attend(dots)
