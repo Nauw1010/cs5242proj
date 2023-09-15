@@ -22,7 +22,7 @@ def get_hparams(init=True):
     model_dir = os.path.join("./logs", args.model)
 
     if not os.path.exists(model_dir):
-    os.makedirs(model_dir)
+        os.makedirs(model_dir)
 
     config_path = args.config
     config_save_path = os.path.join(model_dir, "config.json")
