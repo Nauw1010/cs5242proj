@@ -28,7 +28,7 @@ class Attention(nn.Module):
         self.heads = heads
         self.scale = dim_head ** -0.5
         
-        self.layernorm = nn.LayerNorm(dim)
+        self.norm = nn.LayerNorm(dim)
         self.attend = nn.Softmax(dim = -1)
         self.dropout = nn.Dropout(dropout)
         
@@ -40,7 +40,7 @@ class Attention(nn.Module):
         
     
     def forward(self, x):
-        x = self.layernorm(x)
+        x = self.norm(x)
         qkv = self.to_qkv(x).chunk(3, dim = -1) # (b, n, heads * dim_head * 3) -> 3 * [(b, n, heads * dim_head)]
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv) # (b, n, heads * dim_head) -> (b, heads, n, dim_head)
         
@@ -55,8 +55,8 @@ class Attention(nn.Module):
 class Transformer(nn.Module):
     def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout = 0.):
         super().__init__()
-        self.layernorm = nn.LayerNorm(dim)
-        self.layers = []
+        self.norm = nn.LayerNorm(dim)
+        self.layers = nn.ModuleList([])
         
         for _ in range(depth):
             self.layers.append(nn.ModuleList([
@@ -69,4 +69,4 @@ class Transformer(nn.Module):
             x = attn(x) + x
             x = ff(x) + x
             
-        return self.layernorm(x)
+        return self.norm(x)
