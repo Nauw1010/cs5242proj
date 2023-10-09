@@ -1,8 +1,17 @@
 {
-    "train": {
+    "seed": 42,
+    "pretrain": {
         "log_interval": 200,
         "eval_interval": 1000,
-        "seed": 42,
+        "epochs": 10,
+        "learning_rate": 2e-4,
+        "eps": 1e-9,
+        "batch_size": 64,
+        "lr_decay": 0.7
+    },
+    "finetune": {
+        "log_interval": 200,
+        "eval_interval": 1000,
         "epochs": 20,
         "learning_rate": 2e-4,
         "eps": 1e-9,
@@ -10,7 +19,10 @@
         "lr_decay": 0.7
     },
     "WBCdata": {
-        "training_files": "../data/dataset/WBC_100/train",
+        "training_files_1": "../data/dataset/WBC_1/train",
+        "training_files_10": "../data/dataset/WBC_10/train",
+        "training_files_50": "../data/dataset/WBC_50/train",
+        "training_files_100": "../data/dataset/WBC_100/train",
         "validation_files": "../data/dataset/WBC_100/val",
         "label_dict": {
             "Basophil": 0,
@@ -23,12 +35,20 @@
         "patch_size": 16,
         "num_classes": 5
     },
+    "pRCCdata": {
+        "training_files": "../data/dataset/pRCC_nolabel"
+    },
     "ViTmodel": {
         "dim": 1024,
         "depth": 6,
-        "heads": 16,
+        "heads": 8,
         "mlp_dim": 2048,
         "dropout": 0.1,
         "emb_dropout": 0.1
+    },
+    "MAEmodel": {
+        "masking_ratio": 0.75,
+        "decoder_dim": 512,
+        "decoder_depth": 6
     }
 }
