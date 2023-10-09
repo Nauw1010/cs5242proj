@@ -39,3 +39,38 @@ class WBCdataset(torch.utils.data.Dataset):
     
     def __len__(self):
         return len(self.labels)
+    
+class pRCCdataset(torch.utils.data.Dataset):
+    """
+    Load pRCC dataset
+    """
+    def __init__(self, path_to_folder, transform):
+        self.image_paths = []
+        self.transform = transform
+        
+        for f in os.listdir(path_to_folder):
+            img_path = os.path.join(path_to_folder, f)
+            if os.path.isfile(img_path):
+                self.image_paths.append(img_path)
+                
+    def __getitem__(self, index):
+        img = read_image(self.image_paths[index])
+        return self.transform(img), []
+    
+    def __len__(self):
+        return len(self.image_paths)
+    
+class CAM16dataset(torch.utils.data.Dataset):
+    """
+    Load CAM16 dataset
+    """
+    def __init__(self, path_to_folder, transform):
+        self.image_paths = []
+        self.transform = transform
+        
+    def __getitem__(self, index):
+        img = read_image(self.image_paths[index])
+        return self.transform(img), []
+    
+    def __len__(self):
+        return len(self.image_paths)

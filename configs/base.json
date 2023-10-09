@@ -19,8 +19,8 @@
             "Monocyte": 3,
             "Neutrophil": 4
         },
-        "image_size": 512,
-        "patch_size": 32,
+        "image_size": 256,
+        "patch_size": 16,
         "num_classes": 5
     },
     "ViTmodel": {

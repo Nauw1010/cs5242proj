@@ -68,3 +68,35 @@ class ViT(nn.Module):
         
         x = self.to_latent(x)
         return self.mlp_head(x)
+
+    
+class MAE(nn.Module):
+    def __init__(
+        self,
+        *,
+        encoder,
+        decoder_dim,
+        masking_ratio = 0.75,
+        decoder_depth = 1,
+        decoder_heads = 8,
+        decoder_dim_head = 64
+    ):
+        super().__init__()
+        assert masking_ratio > 0 and masking_ratio < 1, 'masking ratio must be kept between 0 and 1'
+        self.masking_ratio = masking_ratio
+        
+        self.encoder = encoder
+        num_patches, encoder_dim = encoder.pos_embedding.shape[-2:]
+        
+        self.to_patch = encoder.to_patch_embedding[0]
+        self.patch_to_emb = nn.Sequential(*encoder.to_patch_embedding[1:])
+        
+        pixel_values_per_patch = encoder.to_patch_embedding[2].weight.shape[-1]
+        
+        
+        
+        
+        
+        
+    def forward(self, img):
+        pass
