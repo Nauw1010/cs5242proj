@@ -7,9 +7,19 @@ import numpy as np
 from PIL import Image
 import torch
 
+import matplotlib.pyplot as plt
+
 def read_image(img_path):
     img = Image.open(img_path)
     return img
+
+def show_image(image, std, mean, title=''):
+    # image is [H, W, 3]
+    assert image.shape[2] == 3
+    plt.imshow(torch.clip((image * std + mean) * 255, 0, 255).int())
+    plt.title(title, fontsize=16)
+    plt.axis('off')
+    return
 
 def get_hparams(init=True):
     parser = argparse.ArgumentParser()

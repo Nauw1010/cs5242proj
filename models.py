@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from einops import repeat
+from einops import repeat, rearrange
 from einops.layers.torch import Rearrange
 
 import modules
@@ -91,7 +91,7 @@ class MAE(nn.Module):
         self.to_patch = encoder.to_patch_embedding[0]
         self.patch_to_emb = nn.Sequential(*encoder.to_patch_embedding[1:])
         
-        pixel_values_per_patch = encoder.to_patch_embedding[2].weight.shape[-1]
+        self.pixel_values_per_patch = encoder.to_patch_embedding[2].weight.shape[-1]
         
         # decoder parameters
         self.decoder_dim = decoder_dim
@@ -99,14 +99,19 @@ class MAE(nn.Module):
         self.mask_token = nn.Parameter(torch.randn(decoder_dim))
         self.decoder = modules.Transformer(dim = decoder_dim, depth = decoder_depth, heads = decoder_heads, dim_head = decoder_dim_head, mlp_dim = decoder_dim * 4)
         self.decoder_pos_emb = nn.Embedding(num_patches, decoder_dim)
-        self.to_pixels = nn.Linear(decoder_dim, pixel_values_per_patch)
+        self.to_pixels = nn.Linear(decoder_dim, self.pixel_values_per_patch)
         
     def forward(self, img):
         device = img.device
         
+        _, num_channels, image_height, image_width = img.shape
+        
         # get patches
-        patches = self.to_patch(img)
+        patches = self.to_patch(img) # (B, h'*w', p1 * p2 * C)
         batch, num_patches, *_ = patches.shape
+        
+        patch_height = patch_width = int((self.pixel_values_per_patch//num_channels)**.5)
+        assert patch_height * patch_width * num_channels == self.pixel_values_per_patch
         
         # patch to encoder tokens and add positions
         tokens = self.patch_to_emb(patches)
@@ -152,4 +157,12 @@ class MAE(nn.Module):
         
         # calculate reconstruction loss
         recon_loss = F.mse_loss(pred_pixel_values, masked_patches)
-        return recon_loss
+        
+        # reconstruction image
+        recon_img = torch.zeros(batch, num_patches, self.pixel_values_per_patch, device=device)
+        recon_img[batch_range, unmasked_indices] = patches[batch_range, unmasked_indices]
+        recon_img[batch_range, masked_indices] = pred_pixel_values
+        
+        recon_img = rearrange(recon_img, 'b (h w) (p1 p2 c) -> b c (h p1) (w p2)', p1 = patch_height, p2 = patch_width, h = image_height // patch_height, w = image_width // patch_width)
+        
+        return recon_loss, recon_img
