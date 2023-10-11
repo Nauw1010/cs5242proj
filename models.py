@@ -155,10 +155,10 @@ class MAE(nn.Module):
         decoder_input = decoder_input + self.decoder_pos_emb[:, :, :]
         
         decoded_tokens = self.decoder(decoder_input)
-        _decoder_tokens = decoder_tokens[:, 1:, :] # no cls token
+        _decoded_tokens = decoded_tokens[:, 1:, :] # no cls token
         
          # splice out the mask tokens and project to pixel values
-        mask_tokens = _decoder_tokens[batch_range, masked_indices]
+        mask_tokens = _decoded_tokens[batch_range, masked_indices]
         pred_pixel_values = self.to_pixels(mask_tokens)
         
         # calculate reconstruction loss
