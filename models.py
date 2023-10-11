@@ -58,13 +58,13 @@ class ViT(nn.Module):
         
         cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
         x = torch.cat((cls_tokens, x), dim=1)
-        pos_embeddings = repeat(self.pos_embedding, '1 n d -> b n d', b = b)
-        x = x + pos_embeddings
+        # pos_embeddings = repeat(self.pos_embedding, '1 n d -> b n d', b = b)
+        x = x + self.pos_embedding
         x = self.dropout(x)
         
         x = self.transformer(x)
         
-        x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
+        x = x[:, 1:, :].mean(dim = 1) if self.pool == 'mean' else x[:, 0]
         
         x = self.to_latent(x)
         return self.mlp_head(x)
@@ -86,7 +86,7 @@ class MAE(nn.Module):
         self.masking_ratio = masking_ratio
         
         self.encoder = encoder
-        num_patches, encoder_dim = encoder.pos_embedding.shape[-2:]
+        num_patches, encoder_dim = encoder.pos_embedding.shape[-2:] # The num_patches includes cls tokens
         
         self.to_patch = encoder.to_patch_embedding[0]
         self.patch_to_emb = nn.Sequential(*encoder.to_patch_embedding[1:])
@@ -98,7 +98,7 @@ class MAE(nn.Module):
         self.enc_to_dec = nn.Linear(encoder_dim, decoder_dim) if encoder_dim != decoder_dim else nn.Identity()
         self.mask_token = nn.Parameter(torch.randn(decoder_dim))
         self.decoder = modules.Transformer(dim = decoder_dim, depth = decoder_depth, heads = decoder_heads, dim_head = decoder_dim_head, mlp_dim = decoder_dim * 4)
-        self.decoder_pos_emb = nn.Embedding(num_patches, decoder_dim)
+        self.decoder_pos_emb = nn.Parameter(torch.randn(1, num_patches, decoder_dim))
         self.to_pixels = nn.Linear(decoder_dim, self.pixel_values_per_patch)
         
     def forward(self, img):
@@ -115,10 +115,11 @@ class MAE(nn.Module):
         
         # patch to encoder tokens and add positions
         tokens = self.patch_to_emb(patches)
-        if self.encoder.pool == "cls":
-            tokens += self.encoder.pos_embedding[:, 1:(num_patches + 1)]
-        elif self.encoder.pool == "mean":
-            tokens += self.encoder.pos_embedding.to(device, dtype=tokens.dtype)
+        tokens += self.encoder.pos_embedding[:, 1:, :]
+        
+        # class tokens
+        cls_token = self.encoder.cls_token + self.encoder.pos_embedding[:, :1, :]
+        cls_tokens = repeat(cls_token, '1 1 d -> b 1 d', b = batch)
             
         # calculate of patches needed to be masked, and get random indices, dividing it up for mask vs unmasked
         num_masked = int(self.masking_ratio * num_patches)
@@ -129,6 +130,9 @@ class MAE(nn.Module):
         batch_range = torch.arange(batch, device = device)[:, None]
         tokens = tokens[batch_range, unmasked_indices]
         
+        # append class tokens
+        tokens = torch.cat((cls_tokens, tokens), dim=1)
+        
         # get the patches to be masked for the final reconstruction loss
         masked_patches = patches[batch_range, masked_indices]
         
@@ -138,21 +142,23 @@ class MAE(nn.Module):
         # project encoder to decoder dimensions, if they are not equal - the paper says you can get away with a smaller dimension for decoder
         decoder_tokens = self.enc_to_dec(encoded_tokens)
         
-        # reapply decoder position embedding to unmasked tokens
-        unmasked_decoder_tokens = decoder_tokens + self.decoder_pos_emb(unmasked_indices)
+        _decoder_tokens = decoder_tokens[:, 1:, :] # no cls token
         
         # repeat mask tokens for number of masked, and add the positions using the masked indices derived above
         mask_tokens = repeat(self.mask_token, 'd -> b n d', b = batch, n = num_masked)
-        mask_tokens = mask_tokens + self.decoder_pos_emb(masked_indices)
         
         # concat the masked tokens to the decoder tokens and attend with decoder
-        decoder_tokens = torch.zeros(batch, num_patches, self.decoder_dim, device=device)
-        decoder_tokens[batch_range, unmasked_indices] = unmasked_decoder_tokens
-        decoder_tokens[batch_range, masked_indices] = mask_tokens
-        decoded_tokens = self.decoder(decoder_tokens)
+        decoder_input = torch.zeros(batch, num_patches, self.decoder_dim, device=device)
+        decoder_input[batch_range, unmasked_indices] = _decoder_tokens
+        decoder_input[batch_range, masked_indices] = mask_tokens
+        decoder_input = torch.cat([decoder_tokens[:, :1, :], decoder_input], dim=1) # append cls token
+        decoder_input = decoder_input + self.decoder_pos_emb[:, :, :]
+        
+        decoded_tokens = self.decoder(decoder_input)
+        _decoder_tokens = decoder_tokens[:, 1:, :] # no cls token
         
          # splice out the mask tokens and project to pixel values
-        mask_tokens = decoded_tokens[batch_range, masked_indices]
+        mask_tokens = _decoder_tokens[batch_range, masked_indices]
         pred_pixel_values = self.to_pixels(mask_tokens)
         
         # calculate reconstruction loss

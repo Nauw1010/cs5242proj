@@ -19,7 +19,7 @@ def show_image(image, std, mean, title=''):
     plt.imshow(torch.clip((image * std + mean) * 255, 0, 255).int())
     plt.title(title, fontsize=16)
     plt.axis('off')
-    return
+    return 
 
 def get_hparams(init=True):
     parser = argparse.ArgumentParser()
