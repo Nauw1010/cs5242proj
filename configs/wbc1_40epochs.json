@@ -10,11 +10,11 @@
         "lr_decay": 0.5
     },
     "finetune": {
-        "epochs": 10,
+        "epochs": 25,
         "learning_rate": 2e-4,
         "eps": 1e-9,
         "batch_size": 64,
-        "lr_decay": 0.3
+        "lr_decay": 0.7
     },
     "WBCdata": {
         "training_files_1": "../data/dataset/WBC_1/train",
