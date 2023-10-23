@@ -92,9 +92,9 @@ class WBCdataset_Mask(torch.utils.data.Dataset):
             img_mask = self.flip_transform(img_mask)
             
             img, mask = img_mask[0], img_mask[1]
-            #p = torch.rand(1).item()
-            #if p > 0.5:
-            #    mask = self.dummy_mask
+            p = torch.rand(1).item()
+            if p > 0.5:
+                mask = self.dummy_mask
             return img, label, mask
     
     def __len__(self):
